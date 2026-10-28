@@ -1,0 +1,16 @@
+numpy
+pandas
+scipy
+scikit-learn
+xgboost
+lightgbm
+shap
+matplotlib
+seaborn
+geopandas
+pyogrio
+osmnx
+openmeteo-requests
+requests-cache
+requests
+urllib3
