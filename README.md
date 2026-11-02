@@ -87,7 +87,7 @@ python integrated_trips/integrated_trip_diagnostics.py window   # transfer-windo
 
 ## Citation
 
-If you use this code, please cite the manuscript (reference to be added after publication).
+If you use this code, please cite the associated manuscript. The full reference and DOI will be added upon publication.
 
 ## License
 
