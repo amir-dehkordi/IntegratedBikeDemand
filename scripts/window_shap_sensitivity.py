@@ -21,7 +21,7 @@ Model specification (this version)
   - SHAP importance is the mean |SHAP| over all rows (in trips-per-hour units when
     USE_HOURLY_RATE is True).
 
-Synchronized with citibike_ferry_integration_final_2.py matching logic.
+Synchronized with identify_integrated_trips.py matching logic.
 """
 
 import sys
@@ -76,7 +76,7 @@ MATCHING_MODULE_DIR = None
 HERE = Path(__file__).resolve().parent
 OUT_DIR = HERE / "window_shap_sensitivity"
 
-for _p in (HERE, HERE.parent):
+for _p in (HERE, HERE.parent, HERE.parent / "integrated_trips"):
     if str(_p) not in sys.path:
         sys.path.append(str(_p))
 if MATCHING_MODULE_DIR is not None:
@@ -90,10 +90,10 @@ except ImportError as exc:
     ) from exc
 
 try:
-    import citibike_ferry_integration_final_2 as cf
+    import identify_integrated_trips as cf
 except ImportError as exc:
     raise SystemExit(
-        "Cannot import citibike_ferry_integration_final_2.py. Ensure it is in the same directory."
+        "Cannot import identify_integrated_trips.py from integrated_trips/."
     ) from exc
 
 assert BASELINE_WINDOW in WINDOWS, "BASELINE_WINDOW must be one of WINDOWS"
@@ -143,37 +143,10 @@ def clean_name(f):
 
 
 # =====================================================================
-# 1. INTEGRATED-TRIP IDENTIFICATION FOR EVERY WINDOW (via final_2 logic)
+# 1. INTEGRATED-TRIP IDENTIFICATION FOR EVERY WINDOW
 # =====================================================================
 def load_matching_inputs():
-    mapping_raw, _ = cf.load_bike_ferry_mapping(cf.BIKE_MAP_PATH)
-    target_ids = set(mapping_raw["bike_station_id"].dropna())
-
-    schedule_files = cf.discover_ferry_schedule_files(cf.FERRY_SCHEDULE_DIR)
-    all_events = []
-    for _, row in schedule_files.iterrows():
-        events, _ = cf.parse_timetable_file(Path(row["source_file"]), row["route"], row["day_type"])
-        if not events.empty:
-            all_events.append(events)
-    if not all_events:
-        raise ValueError("No valid ferry schedule events were parsed.")
-
-    ferry_events, _ = cf.normalize_ferry_events(pd.concat(all_events, ignore_index=True))
-    schedule_terminals = sorted(ferry_events["ferry_terminal"].dropna().unique().tolist())
-    alias_map, _, _ = cf.map_bike_terminals_to_schedule(
-        mapping_raw["ferry_terminal"].unique(), schedule_terminals, minimum_score=0.80
-    )
-    matching_map = cf.build_matching_map(mapping_raw, alias_map)
-
-    print("Loading Citi Bike trip data...")
-    trips, _ = cf.load_citibike_data(cf.TRIP_DATA_DIR, target_ids)
-
-    relevant_dates = pd.concat(
-        [trips["started_at"].dropna(), trips["ended_at"].dropna()], ignore_index=True
-    )
-    events_dated = cf.expand_ferry_events_to_dates(ferry_events, relevant_dates)
-    events_dated["ferry_terminal_canon"] = events_dated["ferry_terminal_canon"].astype(str)
-    events_dated = events_dated.rename(columns={"ferry_terminal": "matched_schedule_terminal"})
+    _mapping_raw, trips, matching_map, events_dated = cf.load_matching_context()
     return trips, matching_map, events_dated
 
 

@@ -58,6 +58,10 @@ BIKE_LANES_SHP = SLD_DIR / "bike_lanes.shp"             # NOTE: not present in t
 # ---------------------------------------------------------------------
 TRIPS_DIR = ROOT / "integrated_trips"
 TRIPS_CSV = TRIPS_DIR / "all_integrated_trips_16_ferry_terminal.csv"
+BIKE_FERRY_MAP_CSV = TRIPS_DIR / "bike.csv"
+FERRY_SCHEDULE_DIR = TRIPS_DIR / "ferry_schedules"
+CITIBIKE_TRIP_DATA_DIR = TRIPS_DIR / "trip_data"   # raw Citi Bike dumps; not tracked
+INTEGRATED_TRIPS_OUTPUT_DIR = TRIPS_DIR / "outputs"
 
 # ---------------------------------------------------------------------
 # model_inputs/ - shared handoff folder between extraction and modeling

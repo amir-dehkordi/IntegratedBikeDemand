@@ -16,6 +16,10 @@ The pipeline builds a station × day × period × trip-stage demand panel from i
 │   ├── landuse.py                   # MapPLUTO land-use mix in a 500 m buffer
 │   └── Open-Meteo.py                # daily weather for Central Park
 ├── integrated_trips/
+│   ├── identify_integrated_trips.py   # Citi Bike–NYC Ferry trip matching
+│   ├── integrated_trip_diagnostics.py # hourly demand + transfer-window figures
+│   ├── bike.csv                       # bike stations nearest to ferry terminals
+│   ├── ferry_schedules/               # extracted NYC Ferry timetables
 │   └── all_integrated_trips_16_ferry_terminal.csv
 ├── model_inputs/                    # station-level features used by the models
 ├── scripts/
@@ -54,15 +58,25 @@ This repository includes the processed integrated-trip file and the station-leve
 | Road network | OpenStreetMap via OSMnx |
 | Daily weather | [Open-Meteo archive API](https://open-meteo.com/) (Central Park) |
 
-The trip-matching scripts that build `integrated_trips/all_integrated_trips_16_ferry_terminal.csv` from raw Citi Bike and GTFS files are not in this snapshot. Modeling and SHAP scripts start from that CSV plus `model_inputs/`.
+Raw Citi Bike monthly dumps belong under `integrated_trips/trip_data/` and are not tracked. Place the June–August 2024 CSVs there, then:
+
+```bash
+python integrated_trips/identify_integrated_trips.py
+python integrated_trips/integrated_trip_diagnostics.py          # hourly + window figures
+python integrated_trips/integrated_trip_diagnostics.py hourly   # hourly demand only
+python integrated_trips/integrated_trip_diagnostics.py window   # transfer-window only
+```
+
+`identify_integrated_trips.py` writes matched first-/last-mile records to `integrated_trips/outputs/`. Modeling and SHAP scripts start from `integrated_trips/all_integrated_trips_16_ferry_terminal.csv` plus `model_inputs/`.
 
 ## Reproducing the results
 
 1. Confirm `paths.py` points at your local folders (defaults match this layout).
-2. Optional: re-build station features with the scripts in `extracting_external_factor/` (requires `Bike_Stations.csv` and the raw files under `extracting_external_factor/data/`).
-3. `python scripts/Model_comparison.py` — temporal holdout benchmark.
-4. `python scripts/shap_publication_plots.py` — SHAP figures (written to `shap_pub_plots/`).
-5. `python scripts/window_shap_sensitivity.py` — transfer-window sensitivity (needs the extra window-specific trip files if you use that analysis).
+2. Optional: re-identify integrated trips with `python integrated_trips/identify_integrated_trips.py` (requires raw Citi Bike CSVs under `integrated_trips/trip_data/`).
+3. Optional: re-build station features with the scripts in `extracting_external_factor/` (requires `Bike_Stations.csv` and the raw files under `extracting_external_factor/data/`).
+4. `python scripts/Model_comparison.py` — temporal holdout benchmark.
+5. `python scripts/shap_publication_plots.py` — SHAP figures (written to `shap_pub_plots/`).
+6. `python scripts/window_shap_sensitivity.py` — transfer-window SHAP sensitivity (re-runs matching from `identify_integrated_trips.py`).
 
 ## Key settings
 

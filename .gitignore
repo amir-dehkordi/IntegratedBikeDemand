@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+integrated_trips/trip_data/
+integrated_trips/outputs/
