@@ -125,8 +125,7 @@ print("SLD variables selected!")
 print("Calculating Bike Lane Density...")
 
 try:
-    # NOTE: paths.BIKE_LANES_SHP is not present in the current data tree.
-    # Falls back to a zero-filled placeholder column below if missing.
+
     bike_lanes = gpd.read_file(paths.BIKE_LANES_SHP)
     bike_lanes = bike_lanes.to_crs(METRIC_CRS)
 
@@ -306,7 +305,7 @@ final = final.rename(
         "D1A": "PopDensity",
         "D1C": "EmpDensity",
         "D2B_E5MIX": "LandMix",
-        "D3B": "IntDensity",  # Road Intersection Density - kept as IntDensity to match model.py's feature_cols
+        "D3B": "IntDensity",  # Road Intersection Density - from SLD dataset
         "D4B025": "TransitAccess",
         "Pct_AO0": "ZeroVehicle"
     }

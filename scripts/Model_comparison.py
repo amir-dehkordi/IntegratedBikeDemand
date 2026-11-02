@@ -1,11 +1,3 @@
-"""
-model_comparison_tuned_temporal.py
-----------------------------------
-Temporal benchmark of demand models for the bike-ferry station-period panel.
-Evaluates models strictly on the final 2 weeks of summer 2024.
-Models compared: OLS, Poisson GLM, LightGBM and XGBoost.
-"""
-
 import sys
 import warnings
 from itertools import combinations
@@ -150,7 +142,6 @@ tscv = TimeSeriesSplit(n_splits=INNER_SPLITS)
 
 # =====================================================================
 # 3. MODELS, SEARCH SPACES & EQUAL-BUDGET TUNING
-# (OLS is untuned; Poisson GLM, LightGBM and XGBoost are tuned)
 # =====================================================================
 tuning_configs = {
     'Poisson GLM': {

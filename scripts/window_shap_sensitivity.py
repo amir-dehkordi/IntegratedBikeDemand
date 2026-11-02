@@ -48,7 +48,7 @@ EXPECTED_BASELINE_TRIPS = 231_902     # integrated trip records at the baseline 
 
 # Commuting hours (weekdays only). End hours are exclusive.
 AM_PEAK = (7, 10)
-PM_PEAK = (16, 20)
+PM_PEAK = (16, 19)
 
 # True: model trips per hour, weight rows by block length (recommended, see docstring).
 # False: model raw trip counts per block.

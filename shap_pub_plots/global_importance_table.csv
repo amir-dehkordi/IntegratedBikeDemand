@@ -1,0 +1,26 @@
+feature,label,group,mean_abs_shap,share_pct
+is_AM_peak,Is AM Peak,Temporal & weather,10.310174,23.293427
+dock_capacity,Dock Capacity,Station characteristics,8.717224,19.694527
+ferry_distance_m,Ferry Distance (m),Station characteristics,4.566139,10.316123
+is_PM_peak,Is PM Peak,Temporal & weather,4.5167356,10.204507
+job_density,Employment Density,Socio-demographic,2.8846834,6.5172663
+is_weekend,Weekend,Temporal & weather,2.7745879,6.2685323
+precipitation_mm,Precipitation (mm),Temporal & weather,1.2342662,2.7885354
+temp_max_c,Temp Max (°C),Temporal & weather,1.1629803,2.627482
+is_first_mile,Trip Stage,Station characteristics,1.1523086,2.6033714
+mean_humidity_pct,Mean Humidity (%),Temporal & weather,1.1304402,2.553965
+IntDensity,Intersection Density,Built environment,1.0741805,2.4268591
+max_wind_speed_kmh,Max Wind Speed (km/h),Temporal & weather,0.7036735,1.5897855
+age24_30_pct,Age 25–30 (%),Socio-demographic,0.6168787,1.393693
+institutional_pct,Institutional (%),Built environment,0.6102002,1.3786045
+landuse_entropy,Landuse Entropy,Built environment,0.50719416,1.1458865
+industrial_pct,Industrial (%),Built environment,0.50694597,1.1453257
+TransitAccess,Transit Access,Built environment,0.399999,0.9037041
+road_length_m,Road Length (m),Built environment,0.39143923,0.8843653
+residential_pct,Residential (%),Built environment,0.30425853,0.6874009
+commercial_pct,Commercial (%),Built environment,0.15878113,0.3587288
+population_density,Population Density,Socio-demographic,0.15748507,0.35580063
+zero_vehicle_pct,Zero Vehicle (%),Socio-demographic,0.14253236,0.3220185
+median_income,Median Income,Socio-demographic,0.08776695,0.19828889
+age18_24_pct,Age 18–24 (%),Socio-demographic,0.0838248,0.18938251
+higher_edu_pct,Higher Edu (%),Socio-demographic,0.067464456,0.15242015

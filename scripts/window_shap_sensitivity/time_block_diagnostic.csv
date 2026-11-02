@@ -1,0 +1,4 @@
+time_block,is_weekend,rows,hours,mean_trips_per_row,mean_trips_per_hour
+Commute,0,2080,6.0,43.010096153846156,7.168349358974359
+Non_Commute,0,2080,18.0,31.953365384615385,1.7751869658119657
+Non_Commute,1,864,24.0,87.9375,3.6640625

@@ -69,8 +69,7 @@ for idx, row in bike_gdf.iterrows():
         intersections = nodes[nodes['street_count'] >= 3]
         intersection_counts.append(len(intersections))
         
-        # --- C. Measure Bike Lane Infrastructure Length (Safely check missing keys) ---
-        # Using .get() prevents KeyError if the column is completely missing in that buffer area
+        # --- C. Measure Bike Lane Infrastructure Length  ---
         cycleway = edges.get('cycleway', pd.Series(index=edges.index, dtype=str))
         cycleway_left = edges.get('cycleway:left', pd.Series(index=edges.index, dtype=str))
         cycleway_right = edges.get('cycleway:right', pd.Series(index=edges.index, dtype=str))

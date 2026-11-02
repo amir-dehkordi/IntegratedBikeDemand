@@ -3,16 +3,6 @@ shap_publication_plots.py
 -------------------------
 Publication SHAP figures for the XGBoost demand model.
 
-Model specification (this version)
-  - The separate AM-peak / PM-peak indicators are replaced by ONE indicator,
-    is_commuting_time = 1 for weekday trips in 07:00-10:00 or 16:00-20:00.
-  - Panel rows are station x day x time block x trip stage. Two time blocks:
-      Commute      weekday 07:00-10:00 and 16:00-20:00   (7 h)
-      Non_Commute  all other weekday hours (17 h); on weekends the whole day (24 h)
-  - Blocks differ in length, so by default (USE_HOURLY_RATE = True) the model predicts trips
-    PER HOUR and each row is weighted by its length in hours; R2 / RMSE / MAE are computed on
-    trip counts (predicted rate x block hours). SHAP values are then in trips-per-hour units.
-
 Evaluation design (same as model_comparison_tuned_temporal.py)
   - Temporal split: the LAST HOLDOUT_DAYS (14) days are withheld as the test set.
   - XGBoost hyperparameters were tuned by random search (30 candidates) with
@@ -47,18 +37,9 @@ HOLDOUT_DAYS = 14      # last N days are the temporal test set
 SHAP_ON = "all"        # rows explained by the fitted model: "all" | "train" | "test"
 SEED = 42
 
-# Commuting hours (weekdays only). End hours are exclusive.
-AM_PEAK = (7, 10)
-PM_PEAK = (16, 20)
-COMMUTE_HOURS = (AM_PEAK[1] - AM_PEAK[0]) + (PM_PEAK[1] - PM_PEAK[0])
-
-# True: model trips per hour and weight rows by block length (recommended).
-# False: model raw trip counts per block.
-USE_HOURLY_RATE = True
-
-# NOTE: these values were tuned for the OLD target (trip counts, separate AM/PM indicators).
-# Re-run the comparison script with the new specification and update them if they change
-# (and the dictionary in window_shap_sensitivity.py / model_5.py).
+# Selected by RandomizedSearchCV (30 candidates) + TimeSeriesSplit on the pre-holdout period.
+# NOTE: every selected value lies on the edge of the search grid; if you widen the grid and
+# re-run the comparison script, update this dict    ionary (and the one in model_5.py).
 XGB_PARAMS = dict(
     n_estimators=300, max_depth=8, learning_rate=0.03, subsample=0.7,
     colsample_bytree=0.6, reg_alpha=0.1, reg_lambda=10.0, n_jobs=-1,
@@ -81,14 +62,17 @@ trips_df['hour'] = trips_df['started_at'].dt.hour
 weather_df['date'] = pd.to_datetime(weather_df['date']).dt.date
 
 
-def is_commute_hour(hour):
-    return (AM_PEAK[0] <= hour < AM_PEAK[1]) or (PM_PEAK[0] <= hour < PM_PEAK[1])
+def assign_peak_period(hour):
+    if pd.isna(hour):
+        return 'Off_Peak'
+    if 7 <= hour < 10:
+        return 'AM_Peak'
+    if 16 <= hour < 19:
+        return 'PM_Peak'
+    return 'Off_Peak'
 
 
-trips_df = trips_df.dropna(subset=['started_at']).copy()
-_weekend = trips_df['started_at'].dt.weekday >= 5
-_commuting = (~_weekend) & trips_df['hour'].apply(is_commute_hour)
-trips_df['time_block'] = np.where(_commuting, 'Commute', 'Non_Commute')
+trips_df['peak_period'] = trips_df['hour'].apply(assign_peak_period)
 peak_trips = trips_df.copy()
 peak_trips['end_station_id'] = pd.to_numeric(peak_trips['end_station_id'], errors='coerce')
 peak_trips['start_station_id'] = pd.to_numeric(peak_trips['start_station_id'], errors='coerce')
@@ -99,32 +83,29 @@ peak_trips['anchor_station_id'] = np.where(
 )
 peak_trips = peak_trips.dropna(subset=['anchor_station_id', 'date'])
 
-PANEL_KEYS = ['date', 'anchor_station_id', 'time_block', 'trip_type']
-observed_demand = peak_trips.groupby(PANEL_KEYS).size().reset_index(name='trip_demand')
+observed_demand = (
+    peak_trips.groupby(['date', 'anchor_station_id', 'peak_period', 'trip_type'])
+    .size().reset_index(name='trip_demand')
+)
 
 all_dates = pd.date_range(start=observed_demand['date'].min(), end=observed_demand['date'].max()).date
 all_stations = observed_demand['anchor_station_id'].unique()
 grid_index = pd.MultiIndex.from_product(
-    [all_dates, all_stations, ['Commute', 'Non_Commute'], ['first_mile', 'last_mile']],
-    names=PANEL_KEYS,
+    [all_dates, all_stations, ['AM_Peak', 'PM_Peak', 'Off_Peak'], ['first_mile', 'last_mile']],
+    names=['date', 'anchor_station_id', 'peak_period', 'trip_type'],
 )
 full_panel_grid = pd.DataFrame(index=grid_index).reset_index()
-# is_weekend = 1 on Saturday/Sunday (the label matches the coding)
-full_panel_grid['is_weekend'] = full_panel_grid['date'].apply(lambda x: 1 if x.weekday() >= 5 else 0)
-# no commuting block on weekends
-full_panel_grid = full_panel_grid[
-    ~((full_panel_grid['is_weekend'] == 1) & (full_panel_grid['time_block'] == 'Commute'))
-]
-panel_data = pd.merge(full_panel_grid, observed_demand, on=PANEL_KEYS, how='left').fillna({'trip_demand': 0})
+panel_data = pd.merge(
+    full_panel_grid, observed_demand,
+    on=['date', 'anchor_station_id', 'peak_period', 'trip_type'], how='left',
+).fillna({'trip_demand': 0})
 
 final_modeled_df = panel_data.copy()
+# is_weekend = 1 on Saturday/Sunday (the label now matches the coding)
+final_modeled_df['is_weekend'] = final_modeled_df['date'].apply(lambda x: 1 if x.weekday() >= 5 else 0)
 final_modeled_df['is_first_mile'] = (final_modeled_df['trip_type'] == 'first_mile').astype(int)
-final_modeled_df['is_commuting_time'] = (final_modeled_df['time_block'] == 'Commute').astype(int)
-final_modeled_df['period_hours'] = np.where(
-    final_modeled_df['is_commuting_time'] == 1, COMMUTE_HOURS,
-    np.where(final_modeled_df['is_weekend'] == 1, 24, 24 - COMMUTE_HOURS),
-).astype(float)
-final_modeled_df['trip_rate'] = final_modeled_df['trip_demand'] / final_modeled_df['period_hours']
+final_modeled_df['is_AM_peak'] = (final_modeled_df['peak_period'] == 'AM_Peak').astype(int)
+final_modeled_df['is_PM_peak'] = (final_modeled_df['peak_period'] == 'PM_Peak').astype(int)
 
 # Structural merge
 sld_df['Bike Station ID'] = pd.to_numeric(sld_df['Bike Station ID'], errors='coerce').round(2)
@@ -157,7 +138,7 @@ mid_dataset = pd.merge(
 final_dataset = pd.merge(mid_dataset, weather_df, on='date', how='inner').reset_index(drop=True)
 
 feature_cols = [
-    'is_first_mile', 'is_commuting_time', 'is_weekend', 'temp_max_c',
+    'is_first_mile', 'is_AM_peak', 'is_PM_peak', 'is_weekend', 'temp_max_c',
     'precipitation_mm', 'max_wind_speed_kmh', 'mean_humidity_pct', 'dock_capacity',
     'ferry_distance_m', 'landuse_entropy', 'job_density', 'IntDensity',
     'TransitAccess', 'road_length_m', 'residential_pct', 'commercial_pct',
@@ -167,19 +148,10 @@ feature_cols = [
 
 print(f"Panel: {len(final_dataset):,} rows | {final_dataset['anchor_station_id'].nunique()} stations | "
       f"{final_dataset['date'].nunique()} days | total demand {int(final_dataset['trip_demand'].sum()):,}")
-print(f"Target: {'trips per hour, rows weighted by block hours' if USE_HOURLY_RATE else 'trip counts per block'}")
-
-# Diagnostic: block length vs. trips (this is why the target is a rate)
-print("\nDemand by time block (hours = block length):")
-print(final_dataset.groupby(['time_block', 'is_weekend'])
-      .agg(rows=('trip_demand', 'size'), hours=('period_hours', 'first'),
-           mean_trips_per_row=('trip_demand', 'mean'), mean_trips_per_hour=('trip_rate', 'mean'))
-      .round(3).to_string())
-print()
 
 # 4 FEATURE GROUPS FRAMEWORK
 FEATURE_GROUPS = {
-    'Station & trip characteristics': [
+    'Station characteristics': [
         'dock_capacity', 'ferry_distance_m', 'is_first_mile',
     ],
     'Built environment': [
@@ -191,13 +163,13 @@ FEATURE_GROUPS = {
         'zero_vehicle_pct', 'age18_24_pct', 'age24_30_pct',
     ],
     'Temporal & weather': [
-        'is_commuting_time', 'is_weekend', 'precipitation_mm', 'temp_max_c',
-        'mean_humidity_pct', 'max_wind_speed_kmh',
+        'is_weekend', 'is_AM_peak', 'is_PM_peak', 'precipitation_mm', 
+        'temp_max_c', 'mean_humidity_pct', 'max_wind_speed_kmh',
     ],
 }
 
 GROUP_COLORS = {
-    'Station & trip characteristics': '#55a868',
+    'Station characteristics': '#55a868',
     'Built environment': '#c44e52',
     'Socio-demographic': '#8172b3',
     'Temporal & weather': '#ccb974',
@@ -215,10 +187,7 @@ def feature_group(feature_name):
 # 2. TEMPORAL SPLIT, FIT, HOLDOUT CHECK
 # =====================================================================
 X = final_dataset[feature_cols]
-y = final_dataset['trip_demand']                      # trip counts (used for the metrics)
-hours = final_dataset['period_hours'].to_numpy(dtype=float)
-y_fit = (y.to_numpy(dtype=float) / hours) if USE_HOURLY_RATE else y.to_numpy(dtype=float)
-w_fit = hours if USE_HOURLY_RATE else None
+y = final_dataset['trip_demand']
 
 unique_dates = np.sort(final_dataset['date'].unique())
 if len(unique_dates) <= HOLDOUT_DAYS:
@@ -233,11 +202,9 @@ print(f"Training period: {unique_dates[0]} to {unique_dates[-HOLDOUT_DAYS - 1]} 
 print(f"Test period (last {HOLDOUT_DAYS} days): {cutoff_date} to {unique_dates[-1]} ({len(X_test):,} rows)")
 
 model = xgb.XGBRegressor(**XGB_PARAMS, random_state=SEED)
-model.fit(X_train, y_fit[train_mask], sample_weight=None if w_fit is None else w_fit[train_mask])
+model.fit(X_train, y_train)
 
 y_pred_check = model.predict(X_test)
-if USE_HOURLY_RATE:
-    y_pred_check = y_pred_check * hours[test_mask]       # back to trips per block
 print(f"\n--- TEMPORAL HOLDOUT: R2 = {r2_score(y_test, y_pred_check):.4f} | "
       f"RMSE = {np.sqrt(mean_squared_error(y_test, y_pred_check)):.2f} | "
       f"MAE = {mean_absolute_error(y_test, y_pred_check):.2f} ---\n")
@@ -273,7 +240,8 @@ DISPLAY_NAME_OVERRIDES = {
     'dock_capacity': 'Dock Capacity',
     'TransitAccess': 'Transit Access',
     'IntDensity': 'Intersection Density',
-    'is_commuting_time': 'Commuting Time',
+    'is_AM_peak': 'Is AM Peak',
+    'is_PM_peak': 'Is PM Peak',
     'is_first_mile': 'Trip Stage',
     'age18_24_pct': 'Age 18–24 (%)',
     'age24_30_pct': 'Age 25–30 (%)',
@@ -411,7 +379,7 @@ for feat in feature_cols:
     plt.xlabel(clean_name(feat), fontsize=15, family='Times New Roman', labelpad=15)
     plt.ylabel('SHAP value', fontsize=15, family='Times New Roman')
 
-    plt.legend(frameon=False, fontsize=12, loc='upper left')
+    plt.legend(frameon=False, fontsize=13, loc='upper left')
 
     plt.gca().set_title('')
     plt.tight_layout()

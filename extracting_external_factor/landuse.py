@@ -117,9 +117,7 @@ summary = (
     )["land_area"]
     .sum()
     .unstack(fill_value=0)
-    .reset_index()  # BUGFIX: station_id_col was left as the index after
-                     # unstack(), so merge(on=station_id_col) below would
-                     # raise a KeyError since it needs a real column.
+    .reset_index()  
 )
 
 # ==========================================================

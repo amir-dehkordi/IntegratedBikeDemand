@@ -75,8 +75,6 @@ buffers["geometry"] = (
     buffers.buffer(BUFFER_DISTANCE)
 )
 
-# Calculate buffer area in square miles for intersection density calculations
-# 500m buffer area ≈ 785,398 m² ≈ 0.303 square miles
 buffers["buffer_area_sqmi"] = buffers.geometry.area / 2589988.11
 
 # =====================================================
@@ -93,9 +91,6 @@ def load_acs(filepath):
     return df
 
 print("Loading ACS tables...")
-# NOTE: paths.ACS_B25044 needs the .zip in data/acs data/ extracted to a -Data.csv
-# NOTE: paths.ACS_S1701 is not present in data/acs data/ yet - download it from
-#       data.census.gov (table S1701) and place it in that folder before running.
 b01001 = load_acs(paths.ACS_B01001)
 b15003 = load_acs(paths.ACS_B15003)
 b25044 = load_acs(paths.ACS_B25044)
@@ -183,18 +178,6 @@ print("LEHD jobs merged!")
 intersections = gpd.overlay(buffers, tracts, how="intersection")
 intersections["intersect_area"] = intersections.geometry.area
 
-# BUGFIX: The weight must reflect each tract's SHARE OF THE BUFFER, not the
-# fraction of the tract's own area that happens to fall inside the buffer.
-# Dividing by tract_area causes weights to NOT sum to 1 across the tracts
-# intersecting a given station's buffer -- if a buffer fully contains several
-# small tracts (common near dense areas with tiny commercial-heavy tracts),
-# each contributes a weight near 1.0, so the weighted "sum" can exceed the
-# true blended value by 2x-3x or more. This is what produced the impossible
-# $520,000+ median_income outlier.
-#
-# Fix: normalize weight per station so the weights of all tracts touching
-# that station's buffer sum to exactly 1.0, based on each tract's share of
-# the TOTAL intersected area for that station (not the tract's own area).
 station_total_intersect = (
     intersections.groupby("Bike Station ID")["intersect_area"].sum()
 )
@@ -273,7 +256,7 @@ final_cols = [
     "population_density",
     "job_density",
     "age18_24_pct",
-    "age24_30_pct",
+    "age25_30_pct",
     "higher_edu_pct",
     "zero_vehicle_pct",
     "median_income",
