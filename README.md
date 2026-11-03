@@ -33,15 +33,6 @@ The pipeline builds a station × day × period × trip-stage demand panel from i
 
 Place `Bike_Stations.csv` in `extracting_external_factor/` if you need to re-run the feature-extraction scripts. Raw GIS extracts (ACS tables, LEHD LODES, MapPLUTO, SLD geodatabase, census tract shapefile) belong under `extracting_external_factor/data/` and are not tracked.
 
-## Setup
-
-```bash
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-Tested with Python 3.13. Paths are resolved from `paths.py`, so scripts can be run from any working directory.
 
 ## Data
 
